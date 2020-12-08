@@ -1,3 +1,5 @@
+from time import sleep
+
 import psycopg2
 import backoff
 import requests
@@ -7,6 +9,18 @@ from dotenv import load_dotenv
 from os import environ as env
 from elasticsearch import Elasticsearch
 from psycopg2.extras import RealDictCursor
+from functools import wraps
+
+
+def coroutine(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        fn = func(*args, **kwargs)
+        next(fn)
+        return fn
+
+    return inner
+
 
 load_dotenv()
 db_host = env["db_host"]
@@ -30,7 +44,7 @@ def load_from_postgres() -> None:
     # так же в список айдишников на добавление попадают все фильмы, у которых updated_at ме совпадает со значением в редисе
     # собираем все данные из постгреса по фильму, его персонам и жанрам
     # трансформируем это в приемлемый для ес вид и загружаем
-
+    # get_ids_for_update('movie', )
     # затем проверяем жанры
     # точно также смотрим в редисе наличие всех айдишников жанров и совпадение поля updated_at
     # при несоответствии, добавляем айдишник в список для загрузки
@@ -40,6 +54,30 @@ def load_from_postgres() -> None:
     data = postgres_loader.load_data()
 
     import_data(data)
+
+
+def start_etl_pipeline(target):
+    while True:
+        # раз в 60 секунд запускать etl процесс
+        # вызов метода для проверки состояния фильмов
+        sleep(60)
+
+
+def get_ids_for_update(table_name: str, data: dict):
+    # last_checkpoint = забираем из редиса последний updated_at для выбранного направления
+    last_checkpoint = 1
+    query = """
+            SELECT id, modified
+            FROM content.%s
+            WHERE updated_at > %s
+            ORDER BY updated_at
+            LIMIT 100;
+        """ % (table_name, last_checkpoint)
+    ids_for_update = []
+    for id, updated_at in data.items():
+        if get_state(id) != updated_at:
+            ids_for_update.append(id)
+    return ids_for_update
 
 
 def import_data(movies):
