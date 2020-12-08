@@ -9,7 +9,6 @@ from elasticsearch import Elasticsearch
 from psycopg2.extras import RealDictCursor
 
 load_dotenv()
-requests.get()
 db_host = env["db_host"]
 db_port = env["db_port"]
 db_name = env["db_name"]
@@ -24,6 +23,20 @@ def load_from_postgres() -> None:
     """
     postgres_loader = PostgresLoader()
 
+    # сначала проверяем фильмы
+    # для этого проверяем через редис, актуальное ли состояние у нас
+    # делаем запрос в базу по всем фильмам, забираем updated_at
+    # если айдишника с этим фильмом нет в базе или у него, то добавляем его в список айдишников на загруку
+    # так же в список айдишников на добавление попадают все фильмы, у которых updated_at ме совпадает со значением в редисе
+    # собираем все данные из постгреса по фильму, его персонам и жанрам
+    # трансформируем это в приемлемый для ес вид и загружаем
+
+    # затем проверяем жанры
+    # точно также смотрим в редисе наличие всех айдишников жанров и совпадение поля updated_at
+    # при несоответствии, добавляем айдишник в список для загрузки
+    # собираем все данные по фильмам с этими жанрами и обновляем их
+
+    # точно также проверяем персоны и при измении персон обновляем все связанные с этой персоной фильмы
     data = postgres_loader.load_data()
 
     import_data(data)
@@ -79,36 +92,43 @@ class PostgresLoader:
         )
         self.cr = self.connection.cursor(cursor_factory=RealDictCursor)
 
-    def load_data(self) -> list:
+    def load_person_data(self) -> list:
+        # last_modified = get_state()
         person_query_1 = """
                         SELECT id, updated_at
-                FROM content.person
-                WHERE updated_at > '<время>'
-                ORDER BY updated_at
-                LIMIT 100;
+                        FROM content.person
+                        WHERE updated_at > %s
+                        ORDER BY updated_at
+                        LIMIT 100;
                     """
-        person_query_3 = """
-                    SELECT
-                        m.id as m_id, 
-                        m.title, 
-                        m.description, 
-                        m.rating, 
-                        m.type, 
-                        m.created,
-                        m.modified,
-                        movie_person.role, 
-                        p.id, 
-                        p.name,
-                        g.name
-                    FROM content.movie m
-                    LEFT JOIN content.movie_person_rel movie_person ON movie_person.movie_id = m.id
-                    LEFT JOIN content.person p ON p.id = movie_person.person_id
-                    LEFT JOIN content.movie_genre_rel gm ON gm.movie_id = m.id
-                    LEFT JOIN content.genre g ON g.id = gm.genre_id; 
-                    """
+        # person_query_3 = """
+        #             SELECT
+        #                 m.id as m_id,
+        #                 m.title,
+        #                 m.description,
+        #                 m.rating,
+        #                 m.type,
+        #                 m.created,
+        #                 m.modified,
+        #                 movie_person.role,
+        #                 p.id,
+        #                 p.name,
+        #                 g.name
+        #             FROM content.movie m
+        #             LEFT JOIN content.movie_person_rel movie_person ON movie_person.movie_id = m.id
+        #             LEFT JOIN content.person p ON p.id = movie_person.person_id
+        #             LEFT JOIN content.movie_genre_rel gm ON gm.movie_id = m.id
+        #             LEFT JOIN content.genre g ON g.id = gm.genre_id;
+        #             """
         self.cr.execute(person_query_1)
         data = self.cr.fetchall()
         return data
+
+    def load_movie_data(self):
+        return
+
+    def load_genre_data(self):
+        return
 
 
 if __name__ == "__main__":
