@@ -1,8 +1,23 @@
-from elasticsearch import Elasticsearch
+from datetime import datetime
+from typing import Optional
+from dotenv import load_dotenv
+from os import environ as env
 
-elastic = Elasticsearch(hosts='elasticsearch')
+load_dotenv()
 
-schema = {
+DB_HOST: str = env["db_host"]
+DB_PORT: str = env["db_port"]
+DB_NAME: str = env["db_name"]
+DB_USER: str = env["db_user"]
+DB_PASSWORD: str = env["db_password"]
+DB_SCHEME: str = env["db_scheme"]
+DEFAULT_SLEEP_TIME: int = 5
+DEFAULT_INDEX_NAME: Optional[str] = "movies"
+DEFAULT_DATE: str = datetime(day=1, month=1, year=1980).strftime("%Y-%m-%d %H:%M:%S.%f")
+BASE_ES_URL: str = "http://127.0.0.1:9200/"
+# BASE_ES_URL: str = "http://elasticsearch:9200/"
+ES_SCHEMA_FILENAME: str = env.get('elastic_schema') or 'schema.json'
+DEFAULT_ES_SCHEMA = schema = {
     "settings": {
         "refresh_interval": "1s",
         "analysis": {
@@ -132,13 +147,3 @@ schema = {
         }
     }
 }
-
-elastic.indices.delete(index='movies', ignore=[400, 404])
-
-response = elastic.indices.create(
-    index="movies",
-    body=schema,
-    ignore=400
-)
-
-print(response)
