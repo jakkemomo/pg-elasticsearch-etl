@@ -71,8 +71,6 @@ services:
   redis_db:
     image: redis:alpine
     container_name: redis_db
-    volumes:
-      - redis_data:/data
     networks:
       - dotnetwork
 
@@ -101,5 +99,4 @@ volumes:
   static_volume:
   media_volume:
   esdata:
-  redis_data:
 

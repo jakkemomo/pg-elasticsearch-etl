@@ -36,6 +36,7 @@ def coroutine(func):
 class ETL:
     def __init__(self):
         self.redis_storage = storage.retrieve_state()
+        print(self.redis_storage)
 
     @backoff.on_exception(backoff.expo, Exception)
     def start_etl_pipeline(self) -> None:
@@ -87,6 +88,7 @@ class ETL:
     def get_pre_extract_data(self, target, object_table_name: str):
         """Выгрузка данных из хранилища для выбранного направления (фильм, персона, жанр)."""
         object_data: dict = self.redis_storage.get(object_table_name, {})
+        _logger.info(self.redis_storage)
         object_data_values = object_data.values()
         # забираем последнюю дату обновления объекта либо значение по умолчанию
         last_modified = max(object_data_values) if object_data_values else datetime(day=1, month=1, year=1800)
@@ -279,7 +281,6 @@ class PostgresLoader:
 
 if __name__ == "__main__":
     storage = RedisStorage(Redis(host="redis_db", decode_responses=True))
-    # storage = RedisStorage(Redis(decode_responses=True))
     postgres_loader = PostgresLoader(psycopg2.connect(
         host=db_host,
         port=db_port,

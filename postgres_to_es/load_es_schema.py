@@ -2,8 +2,6 @@ from elasticsearch import Elasticsearch
 
 elastic = Elasticsearch(hosts='elasticsearch')
 
-# elastic = Elasticsearch(hosts='localhost')
-
 schema = {
     "settings": {
         "refresh_interval": "1s",
