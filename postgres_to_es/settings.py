@@ -9,4 +9,5 @@ db_user = env["db_user"]
 db_password = env["db_password"]
 db_scheme = env["db_scheme"]
 sleep_time = 5
-base_es_url = "http://127.0.0.1:9200/"
+# base_es_url = "http://127.0.0.1:9200/"
+base_es_url = "http://elasticsearch:9200/"

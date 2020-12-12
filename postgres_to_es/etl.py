@@ -1,6 +1,8 @@
 import logging
 import psycopg2
 import backoff
+import os.path
+import sys
 
 from psycopg2.extras import RealDictCursor
 from functools import wraps
@@ -8,6 +10,11 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from datetime import datetime
 from time import sleep
+
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
 from postgres_to_es.storage import RedisStorage, Redis
 from postgres_to_es.es_loader import ESLoader
 from postgres_to_es.settings import db_user, db_port, db_host, db_name, db_password, db_scheme, sleep_time
@@ -27,8 +34,8 @@ def coroutine(func):
 
 
 class ETL:
-    def __init__(self, storage_data: RedisStorage):
-        self.redis_storage = storage_data.retrieve_state()
+    def __init__(self):
+        self.redis_storage = storage.retrieve_state()
 
     @backoff.on_exception(backoff.expo, Exception)
     def start_etl_pipeline(self) -> None:
@@ -116,7 +123,6 @@ class ETL:
                 existing_modified = table_storage.get(object_id)
                 # Добавляем айди в список для обновления только в том случае, если у нас нет modified в хранилище, либо
                 # modified в хранилище устарел
-                self.get_str_date(modified)
                 if not existing_modified or self.get_str_date(existing_modified) < self.get_str_date(modified):
                     ids_for_update.append(object_id)
                     table_storage.update({object_id: modified})
@@ -272,7 +278,8 @@ class PostgresLoader:
 
 
 if __name__ == "__main__":
-    storage = RedisStorage(Redis(decode_responses=True))
+    storage = RedisStorage(Redis(host="redis_db", decode_responses=True))
+    # storage = RedisStorage(Redis(decode_responses=True))
     postgres_loader = PostgresLoader(psycopg2.connect(
         host=db_host,
         port=db_port,
@@ -282,5 +289,5 @@ if __name__ == "__main__":
         options=f"-c search_path={db_scheme}"
     ))
     es_loader = ESLoader()
-    etl = ETL(storage)
+    etl = ETL()
     etl.start_etl_pipeline()

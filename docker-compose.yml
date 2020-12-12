@@ -1,0 +1,105 @@
+version: '3.1'
+
+services:
+
+  web:
+    build:
+      context: ./
+      dockerfile: ./movies_admin/Dockerfile
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 -w3
+    container_name: django_web
+    volumes:
+      - ./movies_admin/:/usr/src/web/
+      - ./schema_design/:/usr/src/schema_design
+      - ./sqlite_to_postgres/:/usr/src/sqlite_to_postgres
+      - ./postgres_to_es/:/usr/src/postgres_to_es
+      - static_volume:/usr/src/web/config/static
+      - media_volume:/usr/src/web/media
+    networks:
+      - dotnetwork
+    stdin_open: true
+    tty: true
+    env_file:
+      - movies_admin/config/settings/.env
+      - schema_design/.env
+      - sqlite_to_postgres/.env
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    networks:
+      - dotnetwork
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    restart: always
+    container_name: postgres_db
+    environment:
+      - POSTGRES_DB=movies
+      - POSTGRES_USER=jaqombo
+      - POSTGRES_PASSWORD=12345
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.9.2
+    container_name: elastic
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - dotnetwork
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.9.2
+    container_name: kibana
+    networks:
+      - dotnetwork
+    links:
+      - elasticsearch
+
+  redis_db:
+    image: redis:alpine
+    container_name: redis_db
+    volumes:
+      - redis_data:/data
+    networks:
+      - dotnetwork
+
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/usr/src/web/config/static
+      - media_volume:/usr/src/web/media
+    ports:
+      - 1337:80
+      - 8882:8882
+      - 8881:8881
+    networks:
+      - dotnetwork
+    depends_on:
+      - elasticsearch
+      - kibana
+      - web
+
+networks:
+  dotnetwork:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  esdata:
+  redis_data:
+
