@@ -1,7 +1,8 @@
 ## Описание запуска для ревьюера
-#### Создать .env файлы для load_env() в директориях:
+### 1. Создать .env файлы для load_env() в директориях 
 
- ###movies_admin/config/settings:
+
+### movies_admin/config/settings 
     database=postgres
     db_host=db
     db_port=5432
@@ -35,7 +36,7 @@
     db_scheme=content 
     db_path=db.sqlite 
         
-sudo docker-compose up 
+### 2. sudo docker-compose up 
 
 Опционально sudo docker exec -it django_web python /usr/src/web/manage.py createsuperuser
  
