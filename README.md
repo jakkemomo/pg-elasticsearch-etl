@@ -31,12 +31,24 @@
     
 ### 2. sudo docker-compose up 
 
-Опционально sudo docker exec -it django_web python /usr/src/web/manage.py createsuperuser
+###Опционально
  
-Опционально Проверка Django curl -i 0.0.0.0:1337/admin
+Проверка Django
 
-Опционально Проверка ES curl -i 0.0.0.0:8881
+    curl -i 0.0.0.0:1337/admin
+    
+Создать пользователя в Django
+    
+    sudo docker exec -it django_web python /usr/src/web/manage.py createsuperuser
 
-Опционально Проверка Kibana curl -i 0.0.0.0:8882
+Проверка ES
 
-Опционально Проверить загруженные фильмы в ES 0.0.0.0:8881/movies/_search
+    curl -i 0.0.0.0:8881
+
+Проврка Kibana
+    
+    curl -i 0.0.0.0:8882
+
+Проверить загруженные фильмы в ES можно по ссылке
+    
+    0.0.0.0:8881/movies/_search
