@@ -1,6 +1,7 @@
-# Описание запуска для ревьюера
-Создать .env файлы для load_env() в директориях:
- #movies_admin/config/settings:
+## Описание запуска для ревьюера
+#### Создать .env файлы для load_env() в директориях:
+
+ ###movies_admin/config/settings:
     database=postgres
     db_host=db
     db_port=5432
@@ -9,22 +10,23 @@
     db_password=12345
     db_scheme=content
     secret_key=a=ht5j-p30a(_nl7-1e0buhc@kba3ve^v5wk-9@#q*)j)&5&10
- # postgres_to_es
+    
+ ### postgres_to_es
     db_host=db
     db_port=5432
     db_name=movies
     db_user=jaqombo
     db_password=12345
     db_scheme=content
-   # schema_design
- 
+    
+  ### schema_design
     db_host=db
     db_port=5432
     db_name=movies
     db_user=jaqombo
     db_password=12345
-   # sqlite_to_postgres
     
+   ### sqlite_to_postgres
     db_host=db 
     db_port=5432 
     db_name=movies 
