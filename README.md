@@ -31,6 +31,8 @@
     
 ### 2. sudo docker-compose up 
 
+#
+
 ###Опционально
  
 Проверка Django
