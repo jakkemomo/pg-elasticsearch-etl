@@ -1,5 +1,5 @@
 #!/bin/sh
-export $(cat .env | grep -v '#' | awk '/=/ {print $1}')
+
 if [ "$database" = "postgres" ]
 then
     echo "Waiting for postgres..."
@@ -9,6 +9,14 @@ then
     done
 
     echo "PostgreSQL started"
+
 fi
+
+sleep 3
+
+python /usr/src/web/manage.py flush --no-input
+python /usr/src/web/manage.py migrate --fake movies 0001
+python /usr/src/web/manage.py migrate
+python /usr/src/web/manage.py collectstatic --no-input --clear
 
 exec "$@"

@@ -3,26 +3,16 @@ version: '3.1'
 services:
 
   web:
-    build:
-      context: ./
-      dockerfile: ./movies_admin/Dockerfile
+    build: ./movies_admin
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 -w3
     container_name: django_web
     volumes:
-      - ./movies_admin/:/usr/src/web/
-      - ./schema_design/:/usr/src/schema_design
-      - ./sqlite_to_postgres/:/usr/src/sqlite_to_postgres
-      - ./postgres_to_es/:/usr/src/postgres_to_es
       - static_volume:/usr/src/web/config/static
       - media_volume:/usr/src/web/media
     networks:
       - dotnetwork
-    stdin_open: true
-    tty: true
     env_file:
-      - movies_admin/config/settings/.env
-      - schema_design/.env
-      - sqlite_to_postgres/.env
+      - ./movies_admin/config/settings/.env
     depends_on:
       - db
 
@@ -31,13 +21,36 @@ services:
     networks:
       - dotnetwork
     volumes:
+      - ./schema_design/init.sql:/docker-entrypoint-initdb.d/init_schema.sql
       - postgres_data:/var/lib/postgresql/data/
-    restart: always
     container_name: postgres_db
     environment:
-      - POSTGRES_DB=movies
-      - POSTGRES_USER=jaqombo
       - POSTGRES_PASSWORD=12345
+      - POSTGRES_USER=jaqombo
+      - POSTGRES_DB=movies
+
+  sqlite_to_postgres:
+    build: ./sqlite_to_postgres
+    container_name: sqlite_to_postgres
+    env_file:
+      - ./sqlite_to_postgres/.env
+    depends_on:
+      - db
+    networks:
+      - dotnetwork
+    command: python load_data.py
+
+  postgres_to_es:
+    build: ./postgres_to_es
+    container_name: postgres_to_es
+    env_file:
+      - ./postgres_to_es/.env
+    depends_on:
+      - elasticsearch
+      - sqlite_to_postgres
+    networks:
+      - dotnetwork
+    command: python main.py
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.9.2
@@ -55,6 +68,8 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    depends_on:
+      - web
     volumes:
       - esdata:/usr/share/elasticsearch/data
     networks:
@@ -76,6 +91,7 @@ services:
 
   nginx:
     build: ./nginx
+    container_name: ngx
     volumes:
       - static_volume:/usr/src/web/config/static
       - media_volume:/usr/src/web/media
@@ -89,6 +105,8 @@ services:
       - elasticsearch
       - kibana
       - web
+    restart:
+      always
 
 networks:
   dotnetwork:

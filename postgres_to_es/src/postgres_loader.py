@@ -45,7 +45,7 @@ class PostgresLoader:
                 self.cr.execute(movie_ids_query)
                 movie_data = self.cr.fetchall()
                 movie_ids = (m['id'] for m in movie_data)
-                target.send(movie_ids)
+                target.send(tuple(movie_ids))
             else:
                 target.send([])
 

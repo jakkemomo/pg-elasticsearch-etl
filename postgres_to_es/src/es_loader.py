@@ -5,9 +5,7 @@ import requests
 from urllib.parse import urljoin
 from typing import List
 from postgres_to_es.src.settings import BASE_ES_URL, DEFAULT_INDEX_NAME
-from postgres_to_es.main import logger
 
-logging.basicConfig(level=logging.ERROR)
 _logger = logging.getLogger(__name__)
 
 
@@ -35,7 +33,7 @@ class ESLoader:
         if records:
             prepared_query = self._get_es_bulk_query(records, index_name)
             str_query = '\n'.join(prepared_query) + '\n'
-
+            _logger.info("Loading data to ES")
             response = requests.post(
                 urljoin(self.url, '_bulk'),
                 data=str_query,
@@ -46,4 +44,4 @@ class ESLoader:
             for item in json_response.get('items', []):
                 error_message = item['index'].get('error')
                 if error_message:
-                    logger.error(error_message)
+                    _logger.error(error_message)

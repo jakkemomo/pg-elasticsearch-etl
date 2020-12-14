@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from time import sleep
 from postgres_to_es.src.settings import DEFAULT_SLEEP_TIME, DEFAULT_DATE
 
-logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
 
@@ -145,7 +144,6 @@ class ETL:
         while True:
             movie_data: list = (yield)
             self.es_loader.load_to_es(movie_data)
-            _logger.info("Loading data to ES")
 
 
 class Movie(BaseModel):

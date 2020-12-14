@@ -1,5 +1,7 @@
 import json
 import sqlite3
+from datetime import datetime
+
 import psycopg2
 
 from psycopg2.extensions import cursor as _cr
@@ -69,8 +71,8 @@ class PostgresSaver:
         """
         for genre_name in data["genre"]:
             genre = data["genre"][genre_name]
-            query = f"insert into {db_scheme}.genre (id, name) values (%s, %s); "
-            cr.execute(query, (genre.id, genre.name))
+            query = f"insert into {db_name}.{db_scheme}.genre (id, name, created, modified) values (%s, %s, %s, %s); "
+            cr.execute(query, (genre.id, genre.name, genre.created, genre.modified))
 
     @staticmethod
     def save_persons(cr: _cr, data: dict) -> None:
@@ -81,8 +83,8 @@ class PostgresSaver:
         """
         for person_name in data["person"]:
             person = data["person"][person_name]
-            query = f"insert into {db_scheme}.person (id, name) values (%s, %s); "
-            cr.execute(query, (person.id, person.name))
+            query = f"insert into {db_name}.{db_scheme}.person (id, name, created, modified) values (%s, %s, %s, %s); "
+            cr.execute(query, (person.id, person.name, person.created, person.modified))
 
     @staticmethod
     def save_movies(cr: _cr, data: dict) -> None:
@@ -92,8 +94,10 @@ class PostgresSaver:
         :param data: словарь с общими данными для PSQL.
         """
         for movie in data["movie"]:
-            query = f"insert into {db_scheme}.movie (id, title, description, rating) values (%s, %s, %s, %s); "
-            cr.execute(query, (movie.id, movie.title, movie.description, movie.rating))
+            query = f"""insert into {db_name}.{db_scheme}.movie
+                        (id, title, description, rating, created, modified)
+                        values (%s, %s, %s, %s, %s, %s);"""
+            cr.execute(query, (movie.id, movie.title, movie.description, movie.rating, movie.created, movie.modified))
 
     @staticmethod
     def save_movie_person_rel(cr: _cr, data: dict) -> None:
@@ -103,9 +107,11 @@ class PostgresSaver:
         :param data: словарь с общими данными для PSQL.
         """
         for movie_person in data["movie_person_rel"]:
-            query = f"""insert into {db_scheme}.movie_person_rel (id, movie_id, person_id, role)
-                        values (%s, %s, %s, %s) on conflict (movie_id, person_id, role) do nothing;"""
-            cr.execute(query, (movie_person.id, movie_person.movie_id, movie_person.person_id, movie_person.role))
+            query = f"""insert into {db_scheme}.movie_person_rel (id, movie_id, person_id, role, created, modified)
+                        values (%s, %s, %s, %s, %s, %s)
+                        on conflict (movie_id, person_id, role) do nothing;"""
+            cr.execute(query, (movie_person.id, movie_person.movie_id, movie_person.person_id, movie_person.role,
+                               movie_person.created, movie_person.modified))
 
     @staticmethod
     def save_movie_genre_rel(cr: _cr, data: dict) -> None:
@@ -115,9 +121,10 @@ class PostgresSaver:
         :param data: словарь с общими данными для PSQL.
         """
         for movie_genre in data["movie_genre_rel"]:
-            query = f"""insert into {db_scheme}.movie_genre_rel (id, movie_id, genre_id)
-                        values (%s, %s, %s) on conflict (movie_id, genre_id) do nothing;"""
-            cr.execute(query, (movie_genre.id, movie_genre.movie_id, movie_genre.genre_id))
+            query = f"""insert into {db_scheme}.movie_genre_rel (id, movie_id, genre_id, created, modified)
+                        values (%s, %s, %s, %s, %s) on conflict (movie_id, genre_id) do nothing;"""
+            cr.execute(query, (movie_genre.id, movie_genre.movie_id, movie_genre.genre_id, movie_genre.created,
+                               movie_genre.modified))
 
 
 class SQLiteLoader:
@@ -171,7 +178,9 @@ class SQLiteLoader:
                           genres=movie[2].split(", "),
                           directors=movie[5].split(","),
                           actors=actor_data,
-                          writers=writer_data)
+                          writers=writer_data,
+                          created=datetime.now(),
+                          modified=datetime.now())
         self.movie_list.append(new_movie)
         return new_movie
 
@@ -201,11 +210,12 @@ class SQLiteLoader:
         :param movie_id: UUID фильма.
         """
         if genre not in self.genres:
-            new_genre = Genre(id=uuid4().hex, name=genre)
+            new_genre = Genre(id=uuid4().hex, name=genre, created=datetime.now(), modified=datetime.now())
             self.genres[genre] = new_genre
         else:
             new_genre = self.genres[genre]
-        new_movie_genre = MovieGenre(id=uuid4().hex, movie_id=movie_id, genre_id=new_genre.id)
+        new_movie_genre = MovieGenre(id=uuid4().hex, movie_id=movie_id, genre_id=new_genre.id, created=datetime.now(),
+                                     modified=datetime.now())
         self.movie_genre_list.append(new_movie_genre)
 
     def create_persons(self, movie_id, name: str, role: str) -> None:
@@ -216,11 +226,12 @@ class SQLiteLoader:
         :param role: роль человека.
         """
         if name not in self.persons:
-            new_person = Person(id=uuid4().hex, name=name)
+            new_person = Person(id=uuid4().hex, name=name, created=datetime.now(), modified=datetime.now())
             self.persons[name] = new_person
         else:
             new_person = self.persons[name]
-        new_movie_person = MoviePerson(id=uuid4().hex, movie_id=movie_id, person_id=new_person.id, role=role)
+        new_movie_person = MoviePerson(id=uuid4().hex, movie_id=movie_id, person_id=new_person.id, role=role,
+                                       created=datetime.now(), modified=datetime.now())
         self.movie_person_list.append(new_movie_person)
 
     def fix_database(self) -> None:
@@ -294,10 +305,12 @@ class Genre:
     """
     Датакласс для записи информации о жанрах.
     """
-    __slots__ = ["id", "name"]
+    __slots__ = ["id", "name", "created", "modified"]
 
     id: str
     name: str
+    created: datetime
+    modified: datetime
 
 
 @dataclass(frozen=True)
@@ -305,10 +318,12 @@ class Person:
     """
     Датакласс для записи информации о персонах.
     """
-    __slots__ = ["id", "name"]
+    __slots__ = ["id", "name", "created", "modified"]
 
     id: str
     name: str
+    created: datetime
+    modified: datetime
 
 
 @dataclass(frozen=True)
@@ -316,12 +331,14 @@ class MoviePerson:
     """
     Датакласс для записи информации о связи фильмов и персон.
     """
-    __slots__ = ["id", "movie_id", "person_id", "role"]
+    __slots__ = ["id", "movie_id", "person_id", "role", "created", "modified"]
 
     id: str
     movie_id: str
     person_id: str
     role: str
+    created: datetime
+    modified: datetime
 
 
 @dataclass(frozen=True)
@@ -329,11 +346,13 @@ class MovieGenre:
     """
     Датакласс для записи информации о связи фильмов и жанров.
     """
-    __slots__ = ["id", "movie_id", "genre_id"]
+    __slots__ = ["id", "movie_id", "genre_id", "created", "modified"]
 
     id: str
     movie_id: str
     genre_id: str
+    created: datetime
+    modified: datetime
 
 
 @dataclass(frozen=True)
@@ -341,7 +360,8 @@ class Movie:
     """
     Датакласс для записи информации о фильме.
     """
-    __slots__ = ["id", "title", "description", "rating", "genres", "directors", "actors", "writers"]
+    __slots__ = ["id", "title", "description", "rating", "genres", "directors", "actors", "writers", "created",
+                 "modified"]
 
     id: str
     title: str
@@ -351,17 +371,8 @@ class Movie:
     directors: list
     actors: list
     writers: list
-
-
-@dataclass(frozen=True)
-class PersonRole:
-    """
-    Датакласс для записи различных ролей, которые люди могут выполнять для этого фильма.
-    """
-    __slots__ = ["id", "name"]
-
-    id: str
-    name: str
+    created: datetime
+    modified: datetime
 
 
 if __name__ == "__main__":

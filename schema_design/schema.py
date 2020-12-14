@@ -56,7 +56,7 @@ MOVIE_PERSON_REL_TABLE = '''create table if not exists content.movie_person_rel 
                               created timestamptz default now(),
                               modified timestamptz default now());'''
 
-MOVIE_GENRE_INDEX = '''create unique index if not exists movie_genre on content.movie_genre_rel (movie_id, genre_id)'''
+MOVIE_GENRE_INDEX = '''create unique index if not exists movie_genre on content.movie_genre_rel (movie_id, genre_id);'''
 
 MOVIE_PERSON_REL_INDEX = '''create unique index if not exists movie_person_rel_index on movie_person_rel
                                (movie_id,

@@ -1,18 +1,15 @@
 import logging
-
 from elasticsearch import Elasticsearch
-from postgres_to_es.src.settings import DEFAULT_ES_SCHEMA
+from postgres_to_es.src.settings import DEFAULT_ES_SCHEMA, BASE_ES_URL, DEFAULT_INDEX_NAME
 
-logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-# elastic = Elasticsearch(hosts='elasticsearch')
-elastic = Elasticsearch(hosts='localhost:9200')
+elastic = Elasticsearch(hosts=BASE_ES_URL)
 
-elastic.indices.delete(index='movies', ignore=[400, 404])
+elastic.indices.delete(index=DEFAULT_INDEX_NAME, ignore=[400, 404])
 
 response = elastic.indices.create(
-    index="movies",
+    index=DEFAULT_INDEX_NAME,
     body=DEFAULT_ES_SCHEMA,
     ignore=400
 )

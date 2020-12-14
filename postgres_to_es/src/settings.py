@@ -11,13 +11,14 @@ DB_NAME: str = env["db_name"]
 DB_USER: str = env["db_user"]
 DB_PASSWORD: str = env["db_password"]
 DB_SCHEME: str = env["db_scheme"]
-DEFAULT_SLEEP_TIME: int = 5
+DEFAULT_SLEEP_TIME: int = 6
 DEFAULT_INDEX_NAME: Optional[str] = "movies"
 DEFAULT_DATE: str = datetime(day=1, month=1, year=1980).strftime("%Y-%m-%d %H:%M:%S.%f")
-BASE_ES_URL: str = "http://127.0.0.1:9200/"
-# BASE_ES_URL: str = "http://elasticsearch:9200/"
-ES_SCHEMA_FILENAME: str = env.get('elastic_schema') or 'schema.json'
-DEFAULT_ES_SCHEMA = schema = {
+# BASE_ES_URL: str = "http://127.0.0.1:9200/"
+# BASE_REDIS_HOST: str = "localhost"
+BASE_ES_URL: str = "http://elasticsearch:9200/"
+BASE_REDIS_HOST: str = "redis_db"
+DEFAULT_ES_SCHEMA: dict = {
     "settings": {
         "refresh_interval": "1s",
         "analysis": {
