@@ -39,15 +39,16 @@ class PostgresLoader:
                                 FROM content.movie m
                                 LEFT JOIN content.{target_table_name} movie_rel ON movie_rel.movie_id = m.id
                                 WHERE m.modified > '{last_checkpoint}' AND movie_rel.{target_column_name} IN {ids}
-                                ORDER BY m.modified
-                                LIMIT 100;
+                                ORDER BY m.modified;
                                 """
                 self.cr.execute(movie_ids_query)
                 movie_data = self.cr.fetchall()
                 movie_ids = (m['id'] for m in movie_data)
                 target.send(tuple(movie_ids))
+                target.send(last_checkpoint)
             else:
                 target.send([])
+                target.send(last_checkpoint)
 
     @backoff.on_exception(backoff.expo, Exception)
     @coroutine
@@ -71,8 +72,13 @@ class PostgresLoader:
                                     movie_person.role as role,
                                     p.id as p_id,
                                     p.name as p_name,
+                                    p.created as p_created,
+                                    p.modified as p_modified,
                                     g.id as g_id,
-                                    g.name as g_name
+                                    g.name as g_name,
+                                    g.description as g_description,
+                                    g.created as g_created,
+                                    g.modified as g_modified
                                 FROM content.movie m
                                 LEFT JOIN content.movie_person_rel movie_person ON movie_person.movie_id = m.id
                                 LEFT JOIN content.person p ON p.id = movie_person.person_id

@@ -26,6 +26,7 @@ class ETL:
         self.state = storage.retrieve_state()
         self.db_loader = db_loader
         self.es_loader = es_loader
+        self.current_table = ''
 
     @backoff.on_exception(backoff.expo, Exception)
     def start_etl_pipeline(self) -> None:
@@ -43,13 +44,20 @@ class ETL:
         person_producer = self.get_ids_for_update(self.db_loader.get_movie_ids(
             movie_merger, 'movie_person_rel', 'person_id')
         )
+        
         while True:
-            movie_producer.send('movie')
             _logger.info("Movie loading started")
+            self.current_table = 'movie'
+            movie_producer.send('movie')
+
+            _logger.info("Movies from updated genres are loading")
+            self.current_table = 'genre'
             genre_producer.send('genre')
-            _logger.info("Genre loading started")
+
+            _logger.info("Movies from updated persons are loading")
+            self.current_table = 'person'
             person_producer.send('person')
-            _logger.info("Person loading started")
+
             sleep(DEFAULT_SLEEP_TIME)
 
     @backoff.on_exception(backoff.expo, Exception)
@@ -96,11 +104,14 @@ class ETL:
         while True:
             data: list = (yield)
             movies = {}
+            persons = {}
+            genres = {}
             for line in data:
                 movie_id = line['m_id']
+                movie_name = line['title']
                 movie_data = dict(
                     id=movie_id,
-                    title=line['title'],
+                    title=movie_name,
                     description=line['description'],
                     imdb_rating=line['rating'],
                     type=line['type'],
@@ -114,18 +125,62 @@ class ETL:
                 person_id = line.get('p_id')
                 person_name = line.get('p_name')
                 person_data = [{person_id: person_name}]
-                if line['role'] == 'director':
+                person_role = line['role']
+
+                if person_role == 'director':
                     self.set_person(movie.directors, person_data, person_id)
-                elif line['role'] == 'actor':
+                elif person_role == 'actor':
                     self.set_person(movie.actors, person_data, person_id)
-                elif line['role'] == 'writer':
+                elif person_role == 'writer':
                     self.set_person(movie.writers, person_data, person_id)
+
+                if self.current_table == 'person':
+                    person = persons.get(person_id)
+                    if not person:
+                        person_created = line.get('p_created')
+                        person_modified = line.get('p_modified')
+                        person = Person(id=person_id, full_name=person_name, roles=[person_role],
+                                        movies=[{movie_id: movie_name}],
+                                        created=person_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                        modified=person_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                        persons.update({person_id: person})
+                    else:
+                        existing_roles = persons[person_id].roles
+                        if person_role not in existing_roles:
+                            existing_roles.append(person_role)
+                        existing_movies = persons[person_id].movies
+                        if not next((item for item in existing_movies if item.get(movie_id)), None):
+                            existing_movies.append({movie_id: movie_name})
+
                 genre_id = line.get('g_id')
+                genre_name = line.get('g_name')
                 if not any(genre_id in p for p in movie.genres):
-                    movie.genres += [{genre_id: line.get('g_name')}]
+                    movie.genres += [{genre_id: genre_name}]
+
+                if self.current_table == 'genre':
+                    genre_description = line.get('g_description')
+                    genre_created = line.get('g_created')
+                    genre_modified = line.get('g_modified')
+                    genre = genres.get(genre_id)
+                    if not genre:
+                        # создаем новый объект жанра
+                        genre = Genre(id=genre_id, name=genre_name, description=genre_description,
+                                      movies=[{movie_id: movie_name}],
+                                      created=genre_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                      modified=genre_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                        genres.update({genre_id: genre})
+                    else:
+                        existing_movies = genres[genre_id].movies
+                        if not next((item for item in existing_movies if item.get(movie_id)), None):
+                            existing_movies.append({movie_id: movie_name})
+
                 movies.update({movie_id: movie})
             movies = [movie.dict(by_alias=True) for movie in movies.values()]
+            genres = [genre.dict(by_alias=True) for genre in genres.values()]
+            persons = [person.dict(by_alias=True) for person in persons.values()]
             target.send(movies)
+            target.send(genres)
+            target.send(persons)
 
     @staticmethod
     @backoff.on_exception(backoff.expo, Exception)
@@ -143,7 +198,11 @@ class ETL:
         """
         while True:
             movie_data: list = (yield)
-            self.es_loader.load_to_es(movie_data)
+            genre_data: list = (yield)
+            person_data: list = (yield)
+            self.es_loader.load_to_es(movie_data, 'movies')
+            self.es_loader.load_to_es(genre_data, 'genres')
+            self.es_loader.load_to_es(person_data, 'persons')
 
 
 class Movie(BaseModel):
@@ -160,3 +219,25 @@ class Movie(BaseModel):
     writers: Optional[List[Dict[str, str]]] = []
     directors: Optional[List[Dict[str, str]]] = []
     genres: Optional[List[Dict[str, str]]] = []
+
+
+class Genre(BaseModel):
+    """Схема для загрузки жанров."""
+
+    id: str
+    name: str
+    description: Optional[str] = ''
+    movies: Optional[List[Dict[str, str]]] = []
+    created: str
+    modified: str
+
+
+class Person(BaseModel):
+    """Схема для загрузки персон."""
+
+    id: str
+    full_name: str
+    movies: Optional[List[Dict[str, str]]] = []
+    roles: Optional[List[str]] = ''
+    created: str
+    modified: str
