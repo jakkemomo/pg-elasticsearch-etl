@@ -44,7 +44,7 @@ class ETL:
         person_producer = self.get_ids_for_update(self.db_loader.get_movie_ids(
             movie_merger, 'movie_person_rel', 'person_id')
         )
-        
+
         while True:
             _logger.info("Movie loading started")
             self.current_table = 'movie'
@@ -110,13 +110,13 @@ class ETL:
                 movie_id = line['m_id']
                 movie_name = line['title']
                 movie_data = dict(
-                    id=movie_id,
+                    uuid=movie_id,
                     title=movie_name,
                     description=line['description'],
                     imdb_rating=line['rating'],
                     type=line['type'],
-                    created=line['created'].strftime("%Y-%m-%d %H:%M:%S.%f"),
-                    modified=line['modified'].strftime("%Y-%m-%d %H:%M:%S.%f")
+                    created_at=line['created'].strftime("%Y-%m-%d %H:%M:%S.%f"),
+                    updated_at=line['modified'].strftime("%Y-%m-%d %H:%M:%S.%f")
                 )
                 movie = movies.get(movie_id)
                 if not movie:
@@ -124,7 +124,7 @@ class ETL:
                     movie = Movie(**movie_data)
                 person_id = line.get('p_id')
                 person_name = line.get('p_name')
-                person_data = [{person_id: person_name}]
+                person_data = [{'uuid': person_id, 'full_name': person_name}]
                 person_role = line['role']
 
                 if person_role == 'director':
@@ -139,23 +139,26 @@ class ETL:
                     if not person:
                         person_created = line.get('p_created')
                         person_modified = line.get('p_modified')
-                        person = Person(id=person_id, full_name=person_name, roles=[person_role],
-                                        movies=[{movie_id: movie_name}],
-                                        created=person_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                                        modified=person_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                        person = Person(uuid=person_id, full_name=person_name, roles=[person_role],
+                                        film_ids=[movie_id],
+                                        created_at=person_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                        updated_at=person_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
                         persons.update({person_id: person})
                     else:
-                        existing_roles = persons[person_id].roles
+                        person = persons[person_id]
+
+                        existing_roles = person.roles
                         if person_role not in existing_roles:
                             existing_roles.append(person_role)
-                        existing_movies = persons[person_id].movies
-                        if not next((item for item in existing_movies if item.get(movie_id)), None):
-                            existing_movies.append({movie_id: movie_name})
+
+                        existing_movies = person.film_ids
+                        if movie_id not in existing_movies:
+                            existing_movies.append(movie_id)
 
                 genre_id = line.get('g_id')
                 genre_name = line.get('g_name')
-                if not any(genre_id in p for p in movie.genres):
-                    movie.genres += [{genre_id: genre_name}]
+                if not any(genre_id == g.get('uuid') for g in movie.genres):
+                    movie.genres += [{'uuid': genre_id, 'name': genre_name}]
 
                 if self.current_table == 'genre':
                     genre_description = line.get('g_description')
@@ -164,15 +167,15 @@ class ETL:
                     genre = genres.get(genre_id)
                     if not genre:
                         # создаем новый объект жанра
-                        genre = Genre(id=genre_id, name=genre_name, description=genre_description,
-                                      movies=[{movie_id: movie_name}],
-                                      created=genre_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                                      modified=genre_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                        genre = Genre(uuid=genre_id, name=genre_name, description=genre_description,
+                                      film_ids=[movie_id],
+                                      created_at=genre_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                      updated_at=genre_modified.strftime("%Y-%m-%d %H:%M:%S.%f"))
                         genres.update({genre_id: genre})
                     else:
-                        existing_movies = genres[genre_id].movies
-                        if not next((item for item in existing_movies if item.get(movie_id)), None):
-                            existing_movies.append({movie_id: movie_name})
+                        existing_movies = genres[genre_id].film_ids
+                        if movie_id not in existing_movies:
+                            existing_movies.append(movie_id)
 
                 movies.update({movie_id: movie})
             movies = [movie.dict(by_alias=True) for movie in movies.values()]
@@ -186,7 +189,7 @@ class ETL:
     @backoff.on_exception(backoff.expo, Exception)
     def set_person(person_list_ids: List[Dict[str, str]], person_data: list, person_id: str) -> None:
         """Проверяет наличие персоны в объекте фильма."""
-        if not any(person_id in p for p in person_list_ids):
+        if not any(person_id == p.get('uuid') for p in person_list_ids):
             person_list_ids += person_data
 
     @backoff.on_exception(backoff.expo, Exception)
@@ -208,13 +211,13 @@ class ETL:
 class Movie(BaseModel):
     """Схема для загрузки фильмов."""
 
-    id: str
+    uuid: str
     title: str
     description: Optional[str] = ''
     imdb_rating: Optional[float] = None
     type: Optional[str] = ''
-    created: str
-    modified: str
+    created_at: str
+    updated_at: str
     actors: Optional[List[Dict[str, str]]] = []
     writers: Optional[List[Dict[str, str]]] = []
     directors: Optional[List[Dict[str, str]]] = []
@@ -224,20 +227,20 @@ class Movie(BaseModel):
 class Genre(BaseModel):
     """Схема для загрузки жанров."""
 
-    id: str
+    uuid: str
     name: str
     description: Optional[str] = ''
-    movies: Optional[List[Dict[str, str]]] = []
-    created: str
-    modified: str
+    film_ids: Optional[List[str]] = []
+    created_at: str
+    updated_at: str
 
 
 class Person(BaseModel):
     """Схема для загрузки персон."""
 
-    id: str
+    uuid: str
     full_name: str
-    movies: Optional[List[Dict[str, str]]] = []
-    roles: Optional[List[str]] = ''
-    created: str
-    modified: str
+    film_ids: Optional[List[str]] = []
+    roles: Optional[List[str]] = []
+    created_at: str
+    updated_at: str

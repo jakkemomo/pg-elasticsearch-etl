@@ -61,7 +61,7 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
     "mappings": {
         "dynamic": "strict",
         "properties": {
-            "id": {
+            "uuid": {
                 "type": "keyword"
             },
             "title": {
@@ -84,11 +84,11 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
                 "type": "text",
                 "analyzer": "ru_en"
             },
-            "created": {
+            "created_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             },
-            "modified": {
+            "updated_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             },
@@ -96,7 +96,7 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
                 "type": "nested",
                 "dynamic": "false",
                 "properties": {
-                    "id": {
+                    "uuid": {
                         "type": "keyword"
                     },
                     "name": {
@@ -110,9 +110,9 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
                 "dynamic": "false",
                 "properties": {
                     "id": {
-                        "type": "keyword"
+                        "uuid": "keyword"
                     },
-                    "name": {
+                    "full_name": {
                         "type": "text",
                         "analyzer": "ru_en"
                     }
@@ -122,10 +122,10 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
                 "type": "nested",
                 "dynamic": "false",
                 "properties": {
-                    "id": {
+                    "uuid": {
                         "type": "keyword"
                     },
-                    "name": {
+                    "full_name": {
                         "type": "text",
                         "analyzer": "ru_en"
                     }
@@ -135,10 +135,10 @@ DEFAULT_MOVIE_ES_SCHEMA: dict = {
                 "type": "nested",
                 "dynamic": "false",
                 "properties": {
-                    "id": {
+                    "uuid": {
                         "type": "keyword"
                     },
-                    "name": {
+                    "full_name": {
                         "type": "text",
                         "analyzer": "ru_en"
                     }
@@ -192,7 +192,7 @@ DEFAULT_GENRE_ES_SCHEMA: dict = {
     "mappings": {
         "dynamic": "strict",
         "properties": {
-            "id": {
+            "uuid": {
                 "type": "keyword"
             },
             "name": {
@@ -201,6 +201,7 @@ DEFAULT_GENRE_ES_SCHEMA: dict = {
                 "fields": {
                     "raw": {
                         "type": "keyword"
+
                     }
                 }
             },
@@ -208,24 +209,15 @@ DEFAULT_GENRE_ES_SCHEMA: dict = {
                 "type": "text",
                 "analyzer": "ru_en"
             },
-            "movies": {
-                "type": "nested",
-                "dynamic": "false",
-                "properties": {
-                    "id": {
-                        "type": "keyword"
-                    },
-                    "name": {
-                        "type": "text",
-                        "analyzer": "ru_en"
-                    }
-                }
+            "film_ids": {
+                "type": "text",
+                "analyzer": "ru_en"
             },
-            "created": {
+            "created_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             },
-            "modified": {
+            "updated_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             }
@@ -277,7 +269,7 @@ DEFAULT_PERSON_ES_SCHEMA: dict = {
     "mappings": {
         "dynamic": "strict",
         "properties": {
-            "id": {
+            "uuid": {
                 "type": "keyword"
             },
             "full_name": {
@@ -289,28 +281,24 @@ DEFAULT_PERSON_ES_SCHEMA: dict = {
                     }
                 }
             },
-            "movies": {
-                "type": "nested",
-                "dynamic": "false",
-                "properties": {
-                    "id": {
-                        "type": "keyword"
-                    },
-                    "name": {
-                        "type": "text",
-                        "analyzer": "ru_en"
-                    }
-                }
-            },
-            "roles": {
+            "film_ids": {
                 "type": "text",
                 "analyzer": "ru_en"
             },
-            "created": {
+            "roles": {
+                "type": "text",
+                "analyzer": "ru_en",
+                "fields": {
+                    "raw": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "created_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             },
-            "modified": {
+            "updated_at": {
                 "type": "date",
                 "format": "YYYY-MM-DD HH:mm:ss.SSSSSS"
             }

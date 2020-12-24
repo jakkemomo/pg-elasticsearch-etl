@@ -21,7 +21,7 @@ class ESLoader:
         prepared_query = []
         for row in rows:
             prepared_query.extend([
-                json.dumps({'index': {'_index': index_name, '_id': row['id']}}),
+                json.dumps({'index': {'_index': index_name, '_id': row['uuid']}}),
                 json.dumps(row)
             ])
         return prepared_query

@@ -97,8 +97,8 @@ services:
       - media_volume:/usr/src/web/media
     ports:
       - 1337:80
-      - 8882:8882
       - 8881:8881
+      - 8882:8882
     networks:
       - dotnetwork
     depends_on:
