@@ -71,6 +71,7 @@ class PostgresLoader:
                                     m.type,
                                     m.created,
                                     m.modified,
+                                    m.auth_required,
                                     movie_person.role as role,
                                     p.id as p_id,
                                     p.name as p_name,

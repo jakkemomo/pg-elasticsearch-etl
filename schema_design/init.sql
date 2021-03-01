@@ -12,6 +12,7 @@ create table if not exists content.movie (
               certificate varchar(20),
               file_path varchar(100),
               type varchar(20) default 'movie' not null,
+              auth_required bool default False not null,
               created timestamptz default now(),
               modified timestamptz default now() );
 create table if not exists content.person (
