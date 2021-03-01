@@ -1,14 +1,13 @@
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
+from os import environ as env
+from uuid import uuid4
 
 import psycopg2
-
-from psycopg2.extensions import cursor as _cr
-from uuid import uuid4
-from dataclasses import dataclass
 from dotenv import load_dotenv
-from os import environ as env
+from psycopg2.extensions import cursor as _cr
 
 load_dotenv()
 
@@ -44,7 +43,7 @@ class PostgresSaver:
             database=db_name,
             user=db_user,
             password=db_password,
-            options=f"-c search_path={db_scheme}"
+            options=f"-c search_path={db_scheme}",
         )
         self.cr = self.connection.cursor()
 
@@ -97,7 +96,17 @@ class PostgresSaver:
             query = f"""insert into {db_name}.{db_scheme}.movie
                         (id, title, description, rating, created, modified)
                         values (%s, %s, %s, %s, %s, %s);"""
-            cr.execute(query, (movie.id, movie.title, movie.description, movie.rating, movie.created, movie.modified))
+            cr.execute(
+                query,
+                (
+                    movie.id,
+                    movie.title,
+                    movie.description,
+                    movie.rating,
+                    movie.created,
+                    movie.modified,
+                ),
+            )
 
     @staticmethod
     def save_movie_person_rel(cr: _cr, data: dict) -> None:
@@ -110,8 +119,17 @@ class PostgresSaver:
             query = f"""insert into {db_scheme}.movie_person_rel (id, movie_id, person_id, role, created, modified)
                         values (%s, %s, %s, %s, %s, %s)
                         on conflict (movie_id, person_id, role) do nothing;"""
-            cr.execute(query, (movie_person.id, movie_person.movie_id, movie_person.person_id, movie_person.role,
-                               movie_person.created, movie_person.modified))
+            cr.execute(
+                query,
+                (
+                    movie_person.id,
+                    movie_person.movie_id,
+                    movie_person.person_id,
+                    movie_person.role,
+                    movie_person.created,
+                    movie_person.modified,
+                ),
+            )
 
     @staticmethod
     def save_movie_genre_rel(cr: _cr, data: dict) -> None:
@@ -123,8 +141,16 @@ class PostgresSaver:
         for movie_genre in data["movie_genre_rel"]:
             query = f"""insert into {db_scheme}.movie_genre_rel (id, movie_id, genre_id, created, modified)
                         values (%s, %s, %s, %s, %s) on conflict (movie_id, genre_id) do nothing;"""
-            cr.execute(query, (movie_genre.id, movie_genre.movie_id, movie_genre.genre_id, movie_genre.created,
-                               movie_genre.modified))
+            cr.execute(
+                query,
+                (
+                    movie_genre.id,
+                    movie_genre.movie_id,
+                    movie_genre.genre_id,
+                    movie_genre.created,
+                    movie_genre.modified,
+                ),
+            )
 
 
 class SQLiteLoader:
@@ -154,11 +180,13 @@ class SQLiteLoader:
             new_movie = self.create_movie_obj(movie)
             self.create_persons_and_genres(new_movie)
 
-        return dict(person=self.persons,
-                    genre=self.genres,
-                    movie_genre_rel=self.movie_genre_list,
-                    movie_person_rel=self.movie_person_list,
-                    movie=self.movie_list)
+        return dict(
+            person=self.persons,
+            genre=self.genres,
+            movie_genre_rel=self.movie_genre_list,
+            movie_person_rel=self.movie_person_list,
+            movie=self.movie_list,
+        )
 
     def create_movie_obj(self, movie: tuple):
         """
@@ -171,16 +199,18 @@ class SQLiteLoader:
         writers = movie[7]
         writer_data = self.get_writer_data(writer, writers)
         actor_data = self.get_actor_data(movie_id)
-        new_movie = Movie(id=uuid4().hex,
-                          title=movie[3],
-                          description=movie[4],
-                          rating=movie[1],
-                          genres=movie[2].split(", "),
-                          directors=movie[5].split(","),
-                          actors=actor_data,
-                          writers=writer_data,
-                          created=datetime.now(),
-                          modified=datetime.now())
+        new_movie = Movie(
+            id=uuid4().hex,
+            title=movie[3],
+            description=movie[4],
+            rating=movie[1],
+            genres=movie[2].split(", "),
+            directors=movie[5].split(","),
+            actors=actor_data,
+            writers=writer_data,
+            created=datetime.now(),
+            modified=datetime.now(),
+        )
         self.movie_list.append(new_movie)
         return new_movie
 
@@ -197,11 +227,11 @@ class SQLiteLoader:
         for genre in genres:
             self.create_genres(genre, movie_id)
         for director in directors:
-            self.create_persons(movie_id, name=director, role='director')
+            self.create_persons(movie_id, name=director, role="director")
         for writer in writers:
-            self.create_persons(movie_id, name=writer["name"], role='writer')
+            self.create_persons(movie_id, name=writer["name"], role="writer")
         for actor in actors:
-            self.create_persons(movie_id, name=actor["name"], role='actor')
+            self.create_persons(movie_id, name=actor["name"], role="actor")
 
     def create_genres(self, genre: str, movie_id) -> None:
         """
@@ -210,12 +240,22 @@ class SQLiteLoader:
         :param movie_id: UUID фильма.
         """
         if genre not in self.genres:
-            new_genre = Genre(id=uuid4().hex, name=genre, created=datetime.now(), modified=datetime.now())
+            new_genre = Genre(
+                id=uuid4().hex,
+                name=genre,
+                created=datetime.now(),
+                modified=datetime.now(),
+            )
             self.genres[genre] = new_genre
         else:
             new_genre = self.genres[genre]
-        new_movie_genre = MovieGenre(id=uuid4().hex, movie_id=movie_id, genre_id=new_genre.id, created=datetime.now(),
-                                     modified=datetime.now())
+        new_movie_genre = MovieGenre(
+            id=uuid4().hex,
+            movie_id=movie_id,
+            genre_id=new_genre.id,
+            created=datetime.now(),
+            modified=datetime.now(),
+        )
         self.movie_genre_list.append(new_movie_genre)
 
     def create_persons(self, movie_id, name: str, role: str) -> None:
@@ -226,12 +266,23 @@ class SQLiteLoader:
         :param role: роль человека.
         """
         if name not in self.persons:
-            new_person = Person(id=uuid4().hex, name=name, created=datetime.now(), modified=datetime.now())
+            new_person = Person(
+                id=uuid4().hex,
+                name=name,
+                created=datetime.now(),
+                modified=datetime.now(),
+            )
             self.persons[name] = new_person
         else:
             new_person = self.persons[name]
-        new_movie_person = MoviePerson(id=uuid4().hex, movie_id=movie_id, person_id=new_person.id, role=role,
-                                       created=datetime.now(), modified=datetime.now())
+        new_movie_person = MoviePerson(
+            id=uuid4().hex,
+            movie_id=movie_id,
+            person_id=new_person.id,
+            role=role,
+            created=datetime.now(),
+            modified=datetime.now(),
+        )
         self.movie_person_list.append(new_movie_person)
 
     def fix_database(self) -> None:
@@ -248,11 +299,13 @@ class SQLiteLoader:
         conn.execute("update movies set director = '' where director = 'N/A'")
         conn.execute("update movies set plot = '' where plot = 'N/A'")
         conn.execute("update movies set imdb_rating = 0.0 where imdb_rating = 'N/A'")
-        conn.execute("""delete from movie_actors
+        conn.execute(
+            """delete from movie_actors
                         where oid in (select min(OID)
                         from movie_actors
                         group by movie_id, actor_id
-                        having count(*) > 1)""")
+                        having count(*) > 1)"""
+        )
         conn.commit()
 
     def get_writer_data(self, writer: str, writers: list) -> list:
@@ -305,6 +358,7 @@ class Genre:
     """
     Датакласс для записи информации о жанрах.
     """
+
     __slots__ = ["id", "name", "created", "modified"]
 
     id: str
@@ -318,6 +372,7 @@ class Person:
     """
     Датакласс для записи информации о персонах.
     """
+
     __slots__ = ["id", "name", "created", "modified"]
 
     id: str
@@ -331,6 +386,7 @@ class MoviePerson:
     """
     Датакласс для записи информации о связи фильмов и персон.
     """
+
     __slots__ = ["id", "movie_id", "person_id", "role", "created", "modified"]
 
     id: str
@@ -346,6 +402,7 @@ class MovieGenre:
     """
     Датакласс для записи информации о связи фильмов и жанров.
     """
+
     __slots__ = ["id", "movie_id", "genre_id", "created", "modified"]
 
     id: str
@@ -360,8 +417,19 @@ class Movie:
     """
     Датакласс для записи информации о фильме.
     """
-    __slots__ = ["id", "title", "description", "rating", "genres", "directors", "actors", "writers", "created",
-                 "modified"]
+
+    __slots__ = [
+        "id",
+        "title",
+        "description",
+        "rating",
+        "genres",
+        "directors",
+        "actors",
+        "writers",
+        "created",
+        "modified",
+    ]
 
     id: str
     title: str

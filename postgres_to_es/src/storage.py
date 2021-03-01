@@ -1,7 +1,7 @@
-import backoff
-
-from redis import Redis
 from json import dumps, loads
+
+import backoff
+from redis import Redis
 
 
 class RedisStorage:
@@ -19,12 +19,12 @@ class RedisStorage:
          {'person': {'id': 'modified', ...}}
         }
         """
-        self.redis_adapter.set('data', dumps(state))
+        self.redis_adapter.set("data", dumps(state))
 
     @backoff.on_exception(backoff.expo, Exception)
     def retrieve_state(self) -> dict:
         """Получение сохренных данных из Редиса в виде словаря."""
-        raw_data = self.redis_adapter.get('data')
+        raw_data = self.redis_adapter.get("data")
         if raw_data is None:
             return {}
         return loads(raw_data)

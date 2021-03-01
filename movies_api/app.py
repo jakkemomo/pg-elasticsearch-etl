@@ -1,7 +1,7 @@
 import json
-import requests
 
-from flask import Flask, request, jsonify, abort
+import requests
+from flask import Flask, abort, jsonify, request
 
 app = Flask("movies_service")
 
@@ -20,15 +20,19 @@ def movie_details(movie_id: str) -> str:
         json_data["genre"] = json_data.get("genre", ",").split(", ")
         json_data["director"] = json_data.get("director", ", ").split(", ")
         # Необходимая сортировка для прохождения теста в Postman
-        json_data["writers"] = sorted(json_data["writers"], key=lambda i: i["name"].split(" ")[1])
-        data = dict(id=json_data.get("id"),
-                    title=json_data.get("title"),
-                    description=json_data.get("description"),
-                    imdb_rating=json_data.get("imdb_rating"),
-                    writers=json_data.get("writers"),
-                    actors=json_data.get("actors"),
-                    genre=json_data.get("genre"),
-                    director=json_data.get("director"))
+        json_data["writers"] = sorted(
+            json_data["writers"], key=lambda i: i["name"].split(" ")[1]
+        )
+        data = dict(
+            id=json_data.get("id"),
+            title=json_data.get("title"),
+            description=json_data.get("description"),
+            imdb_rating=json_data.get("imdb_rating"),
+            writers=json_data.get("writers"),
+            actors=json_data.get("actors"),
+            genre=json_data.get("genre"),
+            director=json_data.get("director"),
+        )
         return jsonify(data)
     else:
         abort(response.status_code)
@@ -46,47 +50,61 @@ def movies_list() -> str:
         page: int = int(args.get("page", 1))
         sort: str = args.get("sort", "id")
         sort_order: str = args.get("sort_order", "asc")
-        if limit <= 0 or page <= 0 or sort_order not in ["asc", "desc"] or sort not in ["title", "imdb_rating", "id"]:
+        if (
+            limit <= 0
+            or page <= 0
+            or sort_order not in ["asc", "desc"]
+            or sort not in ["title", "imdb_rating", "id"]
+        ):
             raise Exception
     except Exception:
         return abort(422)
 
-    url = f"http://127.0.0.1:9200/movies/_search"
+    url = "http://127.0.0.1:9200/movies/_search"
     from_value = page * limit - limit
 
     if search:
-        query = {"query": dict(multi_match=dict(query=search,
-                                                fields=["title^5", "description^4",
-                                                        "genre^2",
-                                                        "actors_names^3",
-                                                        "writers_names",
-                                                        "director"
-                                                        ])),
-                 "size": limit,
-                 "from": from_value,
-                 "sort": [{sort: {"order": sort_order}}]}
+        query = {
+            "query": dict(
+                multi_match=dict(
+                    query=search,
+                    fields=[
+                        "title^5",
+                        "description^4",
+                        "genre^2",
+                        "actors_names^3",
+                        "writers_names",
+                        "director",
+                    ],
+                )
+            ),
+            "size": limit,
+            "from": from_value,
+            "sort": [{sort: {"order": sort_order}}],
+        }
     else:
         query = {
             "size": limit,
             "from": from_value,
             "sort": [{sort: {"order": sort_order}}],
-            "query":
-                {
-                    "match_all": {}
-                },
+            "query": {"match_all": {}},
         }
 
     response = requests.post(
-        url,
-        data=json.dumps(query),
-        headers={"Content-Type": "application/json"}
+        url, data=json.dumps(query), headers={"Content-Type": "application/json"}
     )
     if response.status_code == 200:
         results = json.loads(response.text).get("hits", {}).get("hits", {})
         data = []
         for result in results:
             source_data = result.get("_source")
-            data.append(dict(id=source_data["id"], title=source_data["title"], imdb_rating=source_data["imdb_rating"]))
+            data.append(
+                dict(
+                    id=source_data["id"],
+                    title=source_data["title"],
+                    imdb_rating=source_data["imdb_rating"],
+                )
+            )
         return jsonify(data)
     else:
         abort(response.status_code)

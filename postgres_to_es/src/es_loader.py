@@ -1,9 +1,10 @@
 import json
 import logging
+from typing import List
+from urllib.parse import urljoin
+
 import requests
 
-from urllib.parse import urljoin
-from typing import List
 from postgres_to_es.src.settings import BASE_ES_URL, DEFAULT_MOVIE_INDEX_NAME
 
 _logger = logging.getLogger(__name__)
@@ -20,13 +21,17 @@ class ESLoader:
         """
         prepared_query = []
         for row in rows:
-            prepared_query.extend([
-                json.dumps({'index': {'_index': index_name, '_id': row['uuid']}}),
-                json.dumps(row)
-            ])
+            prepared_query.extend(
+                [
+                    json.dumps({"index": {"_index": index_name, "_id": row["uuid"]}}),
+                    json.dumps(row),
+                ]
+            )
         return prepared_query
 
-    def load_to_es(self, records: List[dict], index_name: str = DEFAULT_MOVIE_INDEX_NAME):
+    def load_to_es(
+        self, records: List[dict], index_name: str = DEFAULT_MOVIE_INDEX_NAME
+    ):
         """
         Отправка запроса в ES и разбор ошибок сохранения данных
         """
@@ -37,16 +42,16 @@ class ESLoader:
                 records_to_load = records[start_number:end_number]
                 prepared_query = self._get_es_bulk_query(records_to_load, index_name)
                 del records[start_number:end_number]
-                str_query = '\n'.join(prepared_query) + '\n'
+                str_query = "\n".join(prepared_query) + "\n"
                 _logger.info("Loading data to ES")
                 response = requests.post(
-                    urljoin(self.url, '_bulk'),
+                    urljoin(self.url, "_bulk"),
                     data=str_query,
-                    headers={'Content-Type': 'application/x-ndjson'}
+                    headers={"Content-Type": "application/x-ndjson"},
                 )
 
                 json_response = json.loads(response.content.decode())
-                for item in json_response.get('items', []):
-                    error_message = item['index'].get('error')
+                for item in json_response.get("items", []):
+                    error_message = item["index"].get("error")
                     if error_message:
                         _logger.error(error_message)

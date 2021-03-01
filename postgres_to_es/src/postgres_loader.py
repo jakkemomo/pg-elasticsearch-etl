@@ -1,9 +1,9 @@
-import backoff
-
-from psycopg2.extras import RealDictCursor
-from typing import Coroutine
 from datetime import datetime
 from functools import wraps
+from typing import Coroutine
+
+import backoff
+from psycopg2.extras import RealDictCursor
 
 
 def coroutine(func):
@@ -27,9 +27,11 @@ class PostgresLoader:
 
     @backoff.on_exception(backoff.expo, Exception)
     @coroutine
-    def get_movie_ids(self, target: Coroutine, target_table_name, target_column_name) -> Coroutine:
+    def get_movie_ids(
+        self, target: Coroutine, target_table_name, target_column_name
+    ) -> Coroutine:
         """Выгрузка айдишников фильмов, связанных с персонами,
-         айди которых в ids и датой обновления из last_checkpoint."""
+        айди которых в ids и датой обновления из last_checkpoint."""
         while True:
             ids: tuple = (yield)
             last_checkpoint: datetime = (yield)
@@ -43,7 +45,7 @@ class PostgresLoader:
                                 """
                 self.cr.execute(movie_ids_query)
                 movie_data = self.cr.fetchall()
-                movie_ids = (m['id'] for m in movie_data)
+                movie_ids = (m["id"] for m in movie_data)
                 target.send(tuple(movie_ids))
                 target.send(last_checkpoint)
             else:

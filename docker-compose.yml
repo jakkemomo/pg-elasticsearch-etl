@@ -1,7 +1,6 @@
-version: '3.1'
+version: "3.1"
 
 services:
-
   web:
     build: ./movies_admin
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 -w3
@@ -105,8 +104,7 @@ services:
       - elasticsearch
       - kibana
       - web
-    restart:
-      always
+    restart: always
 
 networks:
   dotnetwork:
@@ -117,4 +115,3 @@ volumes:
   static_volume:
   media_volume:
   esdata:
-
