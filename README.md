@@ -1,4 +1,4 @@
-## Описание запуска для ревьюера
+## Описание запуска
 
 ### 1. Создать .env файлы для load_env() в директориях
 
@@ -11,8 +11,7 @@
     db_user=jaqombo
     db_password=12345
     db_scheme=content
-    secret_key=a=ht5j-p30a(_nl7-1e0buhc@kba3ve^v5wk-9@#q*)j)&5&10
-
+    secret_key=some-key
 ### sqlite_to_postgres
 
     db_host=db
